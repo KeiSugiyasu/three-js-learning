@@ -1,62 +1,82 @@
 import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from '@next/font/google'
-import styles from '../../styles/Home.module.css'
 import * as THREE from 'three';
-import {useEffect, useRef} from "react";
+import {useEffect} from "react";
+import styles from '../../styles/Three-js.module.css'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const inter = Inter({ subsets: ['latin'] })
-
-let count = 0;
 function graphics() {
-  if(count++ >= 1) return
-  console.info('graphics')
-
-  const renderer = new THREE.WebGLRenderer();
+  const canvas = document.querySelector('#my-canvas')!;
+  const renderer = new THREE.WebGLRenderer({canvas});
   renderer.setClearColor( 0x050503 );
-  renderer.setPixelRatio( window.devicePixelRatio );
-  renderer.setSize( window.innerWidth, window.innerHeight );
-  document.body.appendChild( renderer.domElement );
 
-  const   camera = new THREE.PerspectiveCamera(
+  const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
-      0.25,
-      200
+      0.1,
+      100
   );
-  camera.position.set(0, 0, 30);
+  camera.position.set(0, 0, 5);
 
   const scene = new THREE.Scene();
 
-  const material = new THREE.LineBasicMaterial( { color: 0xff00ff } );
-  const points = [];
-  points.push( new THREE.Vector3( - 10, 0, 0 ) );
-  points.push( new THREE.Vector3( 0, 10, 0 ) );
-  points.push( new THREE.Vector3( 10, 0, 0 ) );
-  const geometry = new THREE.BufferGeometry().setFromPoints( points );
-  const line = new THREE.Line( geometry, material );
-  scene.add( line );
+  function makeInstance(geometry:THREE.BoxGeometry, color:number, x:number) {
+    const material = new THREE.MeshPhongMaterial({color});
 
-  const loader = new GLTFLoader();
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
 
-  loader.load(     "/sketchfab-ftm-0970f30574d047b1976ba0aa6f2ef855/scene.gltf", function ( gltf ) {
-    scene.add( gltf.scene );
-    renderer.render( scene, camera );
-  }, undefined, function ( error ) {
-    console.error( error );
-  } );
+    cube.position.x = x;
 
-  loader.load( '/sketchfab_taiwan_style_signboard_lowpoly/scene.gltf', function ( gltf ) {
-    gltf.scene.scale.set(1,1,1)
-    scene.add( gltf.scene );
-    renderer.render( scene, camera );
+    return cube;
+  }
 
-  }, undefined, function ( error ) {
+  const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 
-    console.error( error );
+  const cubes = [
+    makeInstance(boxGeometry, 0x44aa88,  0),
+    makeInstance(boxGeometry, 0x8844aa, -2),
+    makeInstance(boxGeometry, 0xaa8844,  2),
+  ];
 
-  } );
+  const color = 0xFFFFFF;
+  const intensity = 1;
+  const light = new THREE.DirectionalLight(color, intensity);
+  light.position.set(-1, 2, 4);
+  scene.add(light);
+
+  function resizeRendererToDisplaySize(renderer) {
+    const canvas = renderer.domElement;
+    const pixelRatio = window.devicePixelRatio;
+    const width = canvas.clientWidth * pixelRatio;
+    const height = canvas.clientHeight * pixelRatio;
+    const needResize = canvas.width !== width || canvas.height !== height;
+    if (needResize) {
+      renderer.setSize(width, height, false);
+    }
+    return needResize;
+  }
+
+  function render(time:number) {
+    if(resizeRendererToDisplaySize(renderer)) {
+      const canvas = renderer.domElement;
+      camera.aspect = canvas.clientWidth / canvas.clientHeight;
+      camera.updateProjectionMatrix();
+    }
+
+    time *= 0.001;  // convert time to seconds
+
+    cubes.forEach((cube, ndx) => {
+      const speed = 1 + ndx * .1;
+      const rot = time * speed;
+      cube.rotation.x = rot;
+      cube.rotation.y = rot;
+    });
+
+    renderer.render(scene, camera);
+
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
 
 }
 
@@ -72,7 +92,16 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-        <canvas/>
+        <style global jsx>{`
+          html,
+          body,
+          body > div:first-child,
+          div#__next,
+          div#__next > div, div#__next > main{
+            height: 100%;
+          }
+        `}</style>
+        <canvas id={'my-canvas'} className={styles.threeJsCanvas}/>
       </main>
     </>
   )
